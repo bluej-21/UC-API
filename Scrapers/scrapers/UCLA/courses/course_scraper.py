@@ -3,6 +3,7 @@ import re
 import requests
 import logging
 import sys
+import time
 
 logging.basicConfig(filename='ucla_courses.log')
 
@@ -10,9 +11,6 @@ URL='http://www.registrar.ucla.edu/schedule/schedulehome.aspx'
 DEPT_URL='http://www.registrar.ucla.edu/schedule/crsredir.aspx?termsel=' \
             '{term}&' \
             'subareasel={dept}'
-
-def parse_course(course_link):
-    pass
 
 def get_soup(url):
     """Get a BeautifulSoup object that represents the html in the url
@@ -108,36 +106,50 @@ def get_course_data(term, dept, course_code, summer=False):
     url = "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel={term}&subareasel={dept}&idxcrs={course_code}" 
     if summer:
         url = 'http://www.registrar.ucla.edu/schedule/detselect_summer.aspx?termsel={term}&subareasel={dept}&idxcrs={course_code}'
-
+    url = url.format(term=term, dept=dept, course_code=course_code)
+    print url
     soup = get_soup(url)
     tables = soup.find_all('table') 
+    datasets = []
     # check which tables contain course info
+    """
+        """
+    datas = []  
+    count = 0
     for table in tables:
         headings = [th.get_text() for th in table.find('tr').find_all('td')]
-        if headings[0] == 'ID Number':
-            correct_tables.append(table)
-            headings = [h for h in headings if h.get_text() != '\xa0']
-            datasets = []
-            for row in table.find_all("tr")[1:]:
-                dataset = zip(headings, (td.get_text() for td in row.find_all("td")))
-                datasets.append(dataset)
-            
-
-
- 
-    headings = table.find('tr', attr={'class':'dgdClassDataHeader'}).find_all('th')
-    headings = [h.get_text() for h in headings if h.get_text() != '&nbsp;']
-    print headings
-    datasets = []
-    for row in table.find_all("tr")[1:]:
-	    dataset = zip(headings, (td.get_text() for td in row.find_all("td")))
-	    datasets.append(dataset)
-
-    print datasets
+        if headings[0] == u'ID Number':
+            print 'f'
+            for row in table.find_all('tr')[1:]:
+                print row
+                tds = row.find_all('td')
+                for td in tds:
+                    td_text = []
+                    # ever td is either td.span.a or td.span or just td, so we try all three
+                    if td.get_text():
+                        t = td.get_text() 
+                        td_text.append(t)
+                        print t
+                    else:
+                        try:
+                            txt = td.span.get_text()
+                            td_text.append(txt)
+                            print txt
+                        except AttributeException as e:
+                            logging.log(20, e)
+                            t = td.span.a.get_text()
+                            td_text.append(t)
+                            print t
+                data = zip(headings, (td for td in td_text)) 
+                print data
+                datas.append(datas)
+            count += 1
+    return datas 
 
 
 
           
 
 
-
+if __name__ == '__main__':
+    print get_course_data('16W', 'EL+ENGR', '0102++++', summer=False)
