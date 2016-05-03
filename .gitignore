@@ -1,0 +1,9 @@
+html
+json
+__pychache__
+.DS_Store
+distro
+*.pyc
+.Python
+.idea
+.env
