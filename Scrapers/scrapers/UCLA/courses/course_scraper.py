@@ -12,6 +12,21 @@ DEPT_URL='http://www.registrar.ucla.edu/schedule/crsredir.aspx?termsel=' \
             '{term}&' \
             'subareasel={dept}'
 
+def get_td_text(td):
+    if td.get_text():
+        t = td.get_text() 
+        return t
+    else:
+        try:
+            txt = td.span.get_text()
+            return txt
+        except AttributeException as e:
+            logging.log(20, e)
+            t = td.span.a.get_text()
+            return t
+    return ''
+
+
 def get_soup(url):
     """Get a BeautifulSoup object that represents the html in the url
 
@@ -118,31 +133,14 @@ def get_course_data(term, dept, course_code, summer=False):
     count = 0
     for table in tables:
         headings = [th.get_text() for th in table.find('tr').find_all('td')]
+
+        # get the correct table
         if headings[0] == u'ID Number':
-            print 'f'
+            
             for row in table.find_all('tr')[1:]:
-                print row
-                tds = row.find_all('td')
-                for td in tds:
-                    td_text = []
-                    # ever td is either td.span.a or td.span or just td, so we try all three
-                    if td.get_text():
-                        t = td.get_text() 
-                        td_text.append(t)
-                        print t
-                    else:
-                        try:
-                            txt = td.span.get_text()
-                            td_text.append(txt)
-                            print txt
-                        except AttributeException as e:
-                            logging.log(20, e)
-                            t = td.span.a.get_text()
-                            td_text.append(t)
-                            print t
-                data = zip(headings, (td for td in td_text)) 
-                print data
-                datas.append(datas)
+                cols = [get_td_text(td) for td in row.find_all('td')]
+                data = zip(headings, cols) 
+                datas.append(data)
             count += 1
     return datas 
 
@@ -152,4 +150,7 @@ def get_course_data(term, dept, course_code, summer=False):
 
 
 if __name__ == '__main__':
-    print get_course_data('16W', 'EL+ENGR', '0102++++', summer=False)
+    x = get_course_data('16W', 'EL+ENGR', '0102++++', summer=False)
+    print len(x)
+    for a in x:
+        print a
