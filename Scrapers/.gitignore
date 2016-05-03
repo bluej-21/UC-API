@@ -5,3 +5,5 @@ __pychache__
 distro
 *.pyc
 .Python
+.idea
+.env
