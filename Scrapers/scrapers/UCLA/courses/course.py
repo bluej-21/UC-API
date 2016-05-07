@@ -25,18 +25,20 @@ def get_td_text(td):
     max_depth = max(text.keys())
     return text[max_depth][0]
 
+def clean(txt):
+    return txt if txt != u'\xa0' else ''
+
 def get_course_data():
     data = open('course.html','r').read()
     soup = BeautifulSoup(data, 'html.parser')
-    tables = soup.find_all('table') 
-    datas = []
-    for table in tables:
-        data = []
+    table = soup.find('table') 
+    data = []
 
-        # get table header
-        rows = table.find_all('tr')
-        header = [get_td_text(td) for td in rows[0].find_all('td')]
+    # get table header
+    rows = table.find_all('tr')
+    header = [clean(get_td_text(td)) for td in rows[0].find_all('td')]
 
-        # still only two rows getting caputred
+    # still only two rows getting caputred
 
 get_course_data()
+
