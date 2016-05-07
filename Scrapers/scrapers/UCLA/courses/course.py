@@ -9,7 +9,7 @@ def get_td_text(td):
             try:
                 if c.span.a.get_text().strip('\n'):
                     return c.span.get_text()
-            except:
+            except AttributeError as e:
                 pass
 
     return ''
@@ -23,8 +23,6 @@ def get_course_data():
         data = []
         # get table header
         rows = table.find_all('tr')
-        for r in rows:
-            print r
         headers = [td.text.strip() for td in rows[0].find_all('td')]
         for row in rows[1:]:
             row_html = [get_td_text(td) for td in row.find_all('td')]
