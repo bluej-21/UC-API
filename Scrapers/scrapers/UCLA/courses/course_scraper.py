@@ -13,17 +13,14 @@ DEPT_URL='http://www.registrar.ucla.edu/schedule/crsredir.aspx?termsel=' \
             'subareasel={dept}'
 
 def get_td_text(td):
-    if td.get_text():
-        t = td.get_text() 
-        return t
-    else:
+    for c in td.contents:
         try:
-            txt = td.span.get_text()
-            return txt
-        except AttributeException as e:
-            logging.log(20, e)
-            t = td.span.a.get_text()
-            return t
+            print c.get_text
+            if c.get_text().strip('\n') != '':
+                return c
+        except AttributeError as e:
+            print c
+            break 
     return ''
 
 
@@ -132,16 +129,21 @@ def get_course_data(term, dept, course_code, summer=False):
     datas = []  
     count = 0
     for table in tables:
+        if not table.find_all('tr', class_='dgdClassDataHeader'):
+            break
         headings = [th.get_text() for th in table.find('tr').find_all('td')]
 
         # get the correct table
         if headings[0] == u'ID Number':
-            
-            for row in table.find_all('tr')[1:]:
-                cols = [get_td_text(td) for td in row.find_all('td')]
-                data = zip(headings, cols) 
-                datas.append(data)
-            count += 1
+        rows = table.find_all('tr')
+        print len(rows)
+        for row in rows:
+            print row
+            print '============'
+            cols = [get_td_text(td) for td in row.find_all('td')]
+            data = zip(headings, cols) 
+            datas.append(data)
+        count += 1
     return datas 
 
 
@@ -152,5 +154,3 @@ def get_course_data(term, dept, course_code, summer=False):
 if __name__ == '__main__':
     x = get_course_data('16W', 'EL+ENGR', '0102++++', summer=False)
     print len(x)
-    for a in x:
-        print a
