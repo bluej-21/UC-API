@@ -4,7 +4,7 @@ from bs4 import NavigableString
 def _depth_first_html_search(html, level, levelDic):
     for node in html.children:
         if isinstance(node, NavigableString):
-            if node.string:
+            if not node.string == '':
                 if level in levelDic.keys():
                     levelDic[level].append(node.string)
                 else:
@@ -22,10 +22,9 @@ def get_text(tree):
 
 def get_td_text(td):
     text = get_text(td)
+    print text
     max_depth = max(text.keys())
-    return text[max_depth][0]
-
-def clean(txt):
+    txt = text[max_depth][0]
     return txt if txt != u'\xa0' else ''
 
 def get_course_data():
@@ -36,7 +35,12 @@ def get_course_data():
 
     # get table header
     rows = table.find_all('tr')
-    header = [clean(get_td_text(td)) for td in rows[0].find_all('td')]
+    print len(rows)
+    header = [get_td_text(td) for td in rows[0].find_all('td')]
+    for row in rows[1:]:
+        row_data = [get_td_text(td) for td in row.find_all('td')]
+        z = zip(header, row_data)
+        print z
 
     # still only two rows getting caputred
 
