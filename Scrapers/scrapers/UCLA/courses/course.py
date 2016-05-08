@@ -4,7 +4,7 @@ from bs4 import NavigableString
 def _depth_first_html_search(html, level, levelDic):
     for node in html.children:
         if isinstance(node, NavigableString):
-            if not node.string == '':
+            if node.string:
                 if level in levelDic.keys():
                     levelDic[level].append(node.string)
                 else:
@@ -25,6 +25,16 @@ def get_td_text(td):
     print text
     max_depth = max(text.keys())
     txt = text[max_depth][0]
+    depth = max_depth
+    while txt != '\n' and depth > 0:
+        depth -= 1
+        for i in len(text[depth]):
+            if text[depth][i] and text[depth][i] != '\n':
+                txt = text[depth][i]
+                break
+        if txt and txt != '\n':
+            break
+
     return txt if txt != u'\xa0' else ''
 
 def get_course_data():
