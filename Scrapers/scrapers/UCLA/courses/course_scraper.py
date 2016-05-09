@@ -14,10 +14,10 @@ URL='http://www.registrar.ucla.edu/schedule/schedulehome.aspx'
 DEPT_URL='http://www.registrar.ucla.edu/schedule/crsredir.aspx?' \
             'termsel={term}&' \
             'subareasel={dept}'
-COURSE_DATA = [u'IDNumber', u'Type', u'Sec', 
-              u'Days', u'Start', u'Stop',  
-              u'Building', u'Room', u"Res't", 
-              u'#En', u'EnCp', u'#WL', u'WLCp', u'Status']
+COURSE_DATA = [u'IDNumber', u'', u'Type', u'', u'Sec', u'', 
+              u'Days', u'', u'Start', u'', u'Stop',   u'',
+              u'Building', u'', u'Room', u'', u"Res't",  u'',
+              u'#En', u'', u'EnCp', u'', u'#WL', u'', u'WLCp', u'', u'Status']
 
 def clean_text(t):
         dirty = [u'\xc2\xa0', '\n', '  ']
@@ -138,11 +138,9 @@ def validate_table(table):
         h = []
         for td in rows[i].find_all('td'):
             unclean_td = get_td_text(td)
-            print "unclean: %s" % unclean_td
             if unclean_td:
                 h.append(unclean_td)
         if h and h[0] == u'IDNumber':
-            print i + 1
             return i + 1
     return 0 
 
@@ -151,30 +149,23 @@ def get_course_data(term, dept, course_code, summer=False):
     if summer:
         url = 'http://www.registrar.ucla.edu/schedule/detselect_summer.aspx?termsel={term}&subareasel={dept}&idxcrs={course_code}'
     url = url.format(term=term, dept=dept, course_code=course_code)
-    print url
+    logging.log(20,url)
     soup = get_soup(url)
     tables = soup.find_all('table') 
     j_data = {term : {}} 
 
     for table in tables:
         i = validate_table(table)
-        print i
         if i > 0:
-            print i
             rows = table.find_all('tr')
             header = [get_td_text(td) for td in rows[i-1].find_all('td')]
-            print rows
-            print header
             for row in rows[i:]:
                 row_data = [get_td_text(td) for td in row.find_all('td')]
                 if len(row_data) > 2:
-                    if len(row_data) == 2*len(COURSE_DATA):
-                        row_data = [
-                    row_data[i]  for i in range(len(row_data)) if i % 2 == 0
-                        ]
                     z = zip(COURSE_DATA,row_data)
                     data = {d:v for d,v in z}
-                    j_data[term][data[u'Sec']] = data
+                    clean_data = {d:v for d,v in z if d}
+                    j_data[term][data[u'Sec']] = clean_data 
     return j_data 
 
 
@@ -184,5 +175,7 @@ def get_course_data(term, dept, course_code, summer=False):
 
 if __name__ == '__main__':
     x = get_course_data('16W', 'EL+ENGR', '0102++++', summer=False)
-    print x
+    import pprint
+    pp = pprint.PrettyPrinter(indent=2)
+    pp.pprint(x) 
 
