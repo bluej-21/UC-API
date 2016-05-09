@@ -1,4 +1,5 @@
-from bs4 import BeautifulSoup 
+from bs4 import BeautifulSoup, NavigableString 
+from tidylib import tidy_document
 import re
 import requests
 import logging
@@ -12,17 +13,42 @@ DEPT_URL='http://www.registrar.ucla.edu/schedule/crsredir.aspx?termsel=' \
             '{term}&' \
             'subareasel={dept}'
 
-def get_td_text(td):
-    for c in td.contents:
-        try:
-            print c.get_text
-            if c.get_text().strip('\n') != '':
-                return c
-        except AttributeError as e:
-            print c
-            break 
-    return ''
+def _depth_first_html_search(html, level, levelDic):
+    for node in html.children:
+        if isinstance(node, NavigableString):
+            if node.string:
+                if level in levelDic.keys():
+                    levelDic[level].append(node.string)
+                else:
+                    levelDic[level] = [node.string]
+            return None
+        _depth_first_html_search(node, level + 1, levelDic)
+    return None
 
+def get_text(tree):
+    text_dict = {}
+    level = 0
+
+    _depth_first_html_search(tree, level, text_dict)
+    return text_dict
+
+def get_td_text(td):
+    text = get_text(td)
+    if text:
+        max_depth = max(text.keys())
+        txt = text[max_depth][0]
+        depth = max_depth
+        while txt != '\n' and depth > 0:
+            depth -= 1
+            for i in len(text[depth]):
+                if text[depth][i] and text[depth][i] != '\n':
+                    txt = text[depth][i]
+                    break
+            if txt and txt != '\n':
+                break
+
+        return txt if txt != u'\xa0' else ''
+    return ''
 
 def get_soup(url):
     """Get a BeautifulSoup object that represents the html in the url
@@ -38,7 +64,9 @@ def get_soup(url):
         sys.exit(1)
 
     html = response.content
-    soup = BeautifulSoup(html, 'html.parser')
+    tidy, errors = tidy_document(html)
+    print errors
+    soup = BeautifulSoup(tidy, 'html.parser')
     return soup
 
 def get_term_to_subject():
@@ -119,31 +147,29 @@ def get_course_data(term, dept, course_code, summer=False):
     if summer:
         url = 'http://www.registrar.ucla.edu/schedule/detselect_summer.aspx?termsel={term}&subareasel={dept}&idxcrs={course_code}'
     url = url.format(term=term, dept=dept, course_code=course_code)
-    print url
     soup = get_soup(url)
     tables = soup.find_all('table') 
     datasets = []
-    # check which tables contain course info
-    """
-        """
-    datas = []  
+    tables_data = []  
     count = 0
     for table in tables:
-        if not table.find_all('tr', class_='dgdClassDataHeader'):
-            break
-        headings = [th.get_text() for th in table.find('tr').find_all('td')]
 
-        # get the correct table
-        if headings[0] == u'ID Number':
-        rows = table.find_all('tr')
-        print len(rows)
-        for row in rows:
-            print row
-            print '============'
-            cols = [get_td_text(td) for td in row.find_all('td')]
-            data = zip(headings, cols) 
-            datas.append(data)
-        count += 1
+        # check if correct table
+        x = table.find_all('tr', {'class': 'dgdClassDataHeader'})
+        print x
+        if x:
+            table_data = []
+            rows = table.find_all('tr')
+            header = [get_td_text(td) for td in rows[0].find_all('td')]
+            print '1111111111111111111111111111111111'
+            print header
+            print '1111111111111111111111111111111111111'
+            for row in rows[1:]:
+                row_data = [get_td_text(td) for td in row.find_all('td')]
+                table_data.append(zip(header,row_data))
+
+            tables_data.append(table_data)
+
     return datas 
 
 
@@ -153,4 +179,7 @@ def get_course_data(term, dept, course_code, summer=False):
 
 if __name__ == '__main__':
     x = get_course_data('16W', 'EL+ENGR', '0102++++', summer=False)
-    print len(x)
+    for a in x:
+        print a
+        print '=============================================='
+
