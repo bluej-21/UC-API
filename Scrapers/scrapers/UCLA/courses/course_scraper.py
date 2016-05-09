@@ -20,59 +20,25 @@ COURSE_DATA = [u'IDNumber', u'Type', u'Sec',
               u'#En', u'EnCp', u'#WL', u'WLCp', u'Status']
 
 def clean_text(t):
-    dirty = [u'\xc2\xa0', '\n', '  ']
-    regex = '[' + re.escape(''.join(dirty)) + ']'
-    return re.sub(regex, '', t)
-
-def _depth_first_html_search(html, level, levelDic):
-    for node in html.children:
-        if isinstance(node, NavigableString):
-            if node.string:
-                if level in levelDic.keys():
-                    levelDic[level].append(node.string)
-                else:
-                    levelDic[level] = [node.string]
-            return None
-        _depth_first_html_search(node, level + 1, levelDic)
-    return None
-
-def get_text(tree):
-    text_dict = {}
-    level = 0
-
-    _depth_first_html_search(tree, level, text_dict)
-    return text_dict
+        dirty = [u'\xc2\xa0', '\n', '  ']
+        regex = '[' + re.escape(''.join(dirty)) + ']'
+        return re.sub(regex, '', t)
 
 def get_doc_text(doc):
     for t in doc.itertext():
         clean = "".join(t.split())
-        if clean_text(clean):
-            return clean_text(clean)
+        cleaned = clean_text(clean)
+        if cleaned:
+            return cleaned 
     return ''
 
 
 def get_td_text(td):
-    text = get_text(td)
 
-    # we do this because our get_text method does not work 
-    # well with ill-formed html
     td_string = str(td)
     doc = fromstring(td_string)
     doc_text = get_doc_text(doc)
 
-    if text and not doc_text:
-        max_depth = max(text.keys())
-        txt = text[max_depth][0]
-        depth = max_depth
-        while txt != '\n' and depth > 0:
-            depth -= 1
-            for i in len(text[depth]):
-                if text[depth][i] and text[depth][i] != '\n':
-                    txt = text[depth][i]
-                    break
-            if txt and txt != '\n':
-                break
-        return clean_text(txt) 
     return doc_text 
 
 def get_soup(url):
@@ -172,10 +138,10 @@ def validate_table(table):
         h = []
         for td in rows[i].find_all('td'):
             unclean_td = get_td_text(td)
+            print "unclean: %s" % unclean_td
             if unclean_td:
                 h.append(unclean_td)
-        print h
-        if h == COURSE_DATA:
+        if h and h[0] == u'IDNumber':
             print i + 1
             return i + 1
     return 0 
@@ -185,21 +151,28 @@ def get_course_data(term, dept, course_code, summer=False):
     if summer:
         url = 'http://www.registrar.ucla.edu/schedule/detselect_summer.aspx?termsel={term}&subareasel={dept}&idxcrs={course_code}'
     url = url.format(term=term, dept=dept, course_code=course_code)
+    print url
     soup = get_soup(url)
     tables = soup.find_all('table') 
     j_data = {term : {}} 
 
     for table in tables:
         i = validate_table(table)
+        print i
         if i > 0:
             print i
             rows = table.find_all('tr')
             header = [get_td_text(td) for td in rows[i-1].find_all('td')]
+            print rows
+            print header
             for row in rows[i:]:
                 row_data = [get_td_text(td) for td in row.find_all('td')]
-                if len(row_data) == len(COURSE_DATA):
+                if len(row_data) > 2:
+                    if len(row_data) == 2*len(COURSE_DATA):
+                        row_data = [
+                    row_data[i]  for i in range(len(row_data)) if i % 2 == 0
+                        ]
                     z = zip(COURSE_DATA,row_data)
-                    print z
                     data = {d:v for d,v in z}
                     j_data[term][data[u'Sec']] = data
     return j_data 
