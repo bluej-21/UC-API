@@ -11,14 +11,18 @@ import time
 logging.basicConfig(filename='ucla_courses.log')
 
 URL='http://www.registrar.ucla.edu/schedule/schedulehome.aspx'
-DEPT_URL='http://www.registrar.ucla.edu/schedule/crsredir.aspx?termsel=' \
-            '{term}&' \
+DEPT_URL='http://www.registrar.ucla.edu/schedule/crsredir.aspx?' \
+            'termsel={term}&' \
             'subareasel={dept}'
+COURSE_DATA = [u'IDNumber', u'Type', u'Sec', 
+              u'Days', u'Start', u'Stop',  
+              u'Building', u'Room', u"Res't", 
+              u'#En', u'EnCp', u'#WL', u'WLCp', u'Status']
 
-COURSE_DATA = ['IDNumber', 'Type', 'Sec', 
-              'Days', 'Start', 'Stop',  
-              'Building', 'Room', "Res't", 
-              '#En', 'EnCp', '#WL', 'WLCp', 'Status']
+def clean_text(t):
+    dirty = [u'\xc2\xa0', '\n', '  ']
+    regex = '[' + re.escape(''.join(dirty)) + ']'
+    return re.sub(regex, '', t)
 
 def _depth_first_html_search(html, level, levelDic):
     for node in html.children:
@@ -41,9 +45,9 @@ def get_text(tree):
 
 def get_doc_text(doc):
     for t in doc.itertext():
-        clean_text = "".join(t.split())
-        if clean_text and clean_text != u'\xa0':
-            return clean_text
+        clean = "".join(t.split())
+        if clean_text(clean):
+            return clean_text(clean)
     return ''
 
 
@@ -68,7 +72,7 @@ def get_td_text(td):
                     break
             if txt and txt != '\n':
                 break
-        return txt.replace('\n','').replace('  ','') if txt != u'\xa0' else ''
+        return clean_text(txt) 
     return doc_text 
 
 def get_soup(url):
@@ -86,7 +90,6 @@ def get_soup(url):
 
     html = response.content
     tidy, errors = tidy_document(html)
-    print errors
     soup = BeautifulSoup(tidy, 'html.parser')
     return soup
 
@@ -145,7 +148,10 @@ def get_list_of_courses(dept, dept_url):
     # data structure will look like: { deptname: course: [semesters offered] }
     dept_data = {} 
     soup = get_soup(dept_url)
-    session_pattern = re.compile(r'ctl00_BodyContentPlaceHolder_crsredir1_pnl(NormalInfo|SessionInfo[a-zA-Z])') 
+    session_pattern = re.compile(
+        r'ctl00_BodyContent' \
+        'PlaceHolder_crsredir1_pnl(NormalInfo|SessionInfo[a-zA-Z])'
+    ) 
 
     session_divs = soup.find_all('div', id=session_pattern)
     courses_data = []
@@ -161,7 +167,18 @@ def get_list_of_courses(dept, dept_url):
     return courses_data 
 
 def validate_table(table):
-    pass
+    rows = table.find_all('tr')
+    for i in range(len(rows)):
+        h = []
+        for td in rows[i].find_all('td'):
+            unclean_td = get_td_text(td)
+            if unclean_td:
+                h.append(unclean_td)
+        print h
+        if h == COURSE_DATA:
+            print i + 1
+            return i + 1
+    return 0 
 
 def get_course_data(term, dept, course_code, summer=False):
     url = "http://www.registrar.ucla.edu/schedule/detselect.aspx?termsel={term}&subareasel={dept}&idxcrs={course_code}" 
@@ -173,15 +190,18 @@ def get_course_data(term, dept, course_code, summer=False):
     j_data = {term : {}} 
 
     for table in tables:
-
-        if validate_table(table):
+        i = validate_table(table)
+        if i > 0:
+            print i
             rows = table.find_all('tr')
-            header = [get_td_text(td) for td in rows[0].find_all('td')]
-            for row in rows[1:]:
+            header = [get_td_text(td) for td in rows[i-1].find_all('td')]
+            for row in rows[i:]:
                 row_data = [get_td_text(td) for td in row.find_all('td')]
-                z = zip(COURSE_DATA,row_data)
-                print z
-                j_data[term][row_data[2]] = {d:v for d,v in z}
+                if len(row_data) == len(COURSE_DATA):
+                    z = zip(COURSE_DATA,row_data)
+                    print z
+                    data = {d:v for d,v in z}
+                    j_data[term][data[u'Sec']] = data
     return j_data 
 
 
@@ -191,7 +211,5 @@ def get_course_data(term, dept, course_code, summer=False):
 
 if __name__ == '__main__':
     x = get_course_data('16W', 'EL+ENGR', '0102++++', summer=False)
-    for a in x:
-        print a
-        print '=============================================='
+    print x
 
