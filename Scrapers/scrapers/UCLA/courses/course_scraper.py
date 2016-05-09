@@ -1,5 +1,7 @@
-from bs4 import BeautifulSoup, NavigableString 
+from bs4 import BeautifulSoup
+from bs4 import NavigableString
 from tidylib import tidy_document
+from lxml.html import fromstring
 import re
 import requests
 import logging
@@ -12,6 +14,11 @@ URL='http://www.registrar.ucla.edu/schedule/schedulehome.aspx'
 DEPT_URL='http://www.registrar.ucla.edu/schedule/crsredir.aspx?termsel=' \
             '{term}&' \
             'subareasel={dept}'
+
+COURSE_DATA = ['IDNumber', 'Type', 'Sec', 
+              'Days', 'Start', 'Stop',  
+              'Building', 'Room', "Res't", 
+              '#En', 'EnCp', '#WL', 'WLCp', 'Status']
 
 def _depth_first_html_search(html, level, levelDic):
     for node in html.children:
@@ -32,9 +39,24 @@ def get_text(tree):
     _depth_first_html_search(tree, level, text_dict)
     return text_dict
 
+def get_doc_text(doc):
+    for t in doc.itertext():
+        clean_text = "".join(t.split())
+        if clean_text and clean_text != u'\xa0':
+            return clean_text
+    return ''
+
+
 def get_td_text(td):
     text = get_text(td)
-    if text:
+
+    # we do this because our get_text method does not work 
+    # well with ill-formed html
+    td_string = str(td)
+    doc = fromstring(td_string)
+    doc_text = get_doc_text(doc)
+
+    if text and not doc_text:
         max_depth = max(text.keys())
         txt = text[max_depth][0]
         depth = max_depth
@@ -46,9 +68,8 @@ def get_td_text(td):
                     break
             if txt and txt != '\n':
                 break
-
-        return txt if txt != u'\xa0' else ''
-    return ''
+        return txt.replace('\n','').replace('  ','') if txt != u'\xa0' else ''
+    return doc_text 
 
 def get_soup(url):
     """Get a BeautifulSoup object that represents the html in the url
@@ -139,7 +160,7 @@ def get_list_of_courses(dept, dept_url):
             courses_data.append([name, k])
     return courses_data 
 
-def get_textbook(url):
+def validate_table(table):
     pass
 
 def get_course_data(term, dept, course_code, summer=False):
@@ -149,28 +170,19 @@ def get_course_data(term, dept, course_code, summer=False):
     url = url.format(term=term, dept=dept, course_code=course_code)
     soup = get_soup(url)
     tables = soup.find_all('table') 
-    datasets = []
-    tables_data = []  
-    count = 0
+    j_data = {term : {}} 
+
     for table in tables:
 
-        # check if correct table
-        x = table.find_all('tr', {'class': 'dgdClassDataHeader'})
-        print x
-        if x:
-            table_data = []
+        if validate_table(table):
             rows = table.find_all('tr')
             header = [get_td_text(td) for td in rows[0].find_all('td')]
-            print '1111111111111111111111111111111111'
-            print header
-            print '1111111111111111111111111111111111111'
             for row in rows[1:]:
                 row_data = [get_td_text(td) for td in row.find_all('td')]
-                table_data.append(zip(header,row_data))
-
-            tables_data.append(table_data)
-
-    return datas 
+                z = zip(COURSE_DATA,row_data)
+                print z
+                j_data[term][row_data[2]] = {d:v for d,v in z}
+    return j_data 
 
 
 
