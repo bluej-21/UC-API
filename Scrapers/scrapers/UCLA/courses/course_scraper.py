@@ -59,10 +59,21 @@ def get_soup(url):
     soup = BeautifulSoup(tidy, 'html.parser')
     return soup
 
+def get_ugly_soup(url):
+    try:
+        response = requests.get(url)
+    except requests.exceptions.RequestException as e:
+        logging.log(40, e)
+        sys.exit(1)
+
+    html = response.content
+    soup = BeautifulSoup(html, 'html.parser')
+    return soup
+
 def get_term_to_subject():
     """Get a tuple of (terms, (dept, dept_url))"""
 
-    soup = get_soup(URL)
+    soup = get_ugly_soup(URL)
 
     # if not valid_page(soup):
     #     logging.log(ERROR, "page structure is not valid")
@@ -86,9 +97,7 @@ def get_term_to_subject():
         d = dept_pattern.match(option)
 
         # can't match both
-        if m and d:
-            break
-        if m:
+        if m and not d:
             dept_index += 1
             terms.append(m.group(1))
         if d:
@@ -97,7 +106,7 @@ def get_term_to_subject():
             depts.append((dept_name, search_url))
 
     if not (terms and depts):
-        logging.log('CRITICAL', "page is not formatted the same")
+        logging.log(50, "page is not formatted the same")
         sys.exit(1)
 
     return (terms, depts)
@@ -121,16 +130,18 @@ def get_list_of_courses(dept, dept_url):
 
     session_divs = soup.find_all('div', id=session_pattern)
     courses_data = []
+    courses_keys = []
     for session in session_divs:
         select = session.find('select')
         courses = select.find_all('option')
         for course in courses:
             # each course looks something like:
             # <option value="0031    A">COM SCI 31 - Introduction to Computer Science I</option>
-            k = course['value'].replace(' ', '+')
+            course_key = course['value'].replace(' ', '+')
             name = course.text
-            courses_data.append([name, k])
-    return courses_data 
+            courses_data.append(name)
+            courses_keys.append(course_key)
+    return (courses_data,courses_keys) 
 
 def validate_table(table):
     rows = table.find_all('tr')
@@ -174,8 +185,34 @@ def get_course_data(term, dept, course_code, summer=False):
 
 
 if __name__ == '__main__':
-    x = get_course_data('16W', 'EL+ENGR', '0102++++', summer=False)
+    terms, departments = get_term_to_subject()
+    print terms
+    ucla_data = {d[0]:None for d in departments}
+    for dep,url in departments:
+        all_courses = {} 
+        term_urls = [url.format(term=term) for term in terms]
+
+        for term in term_urls:
+            course, course_key = get_list_of_courses(dep, term)
+            all_couress[course_key] = course
+
+        ucla_data[dep] = {c:{} for c in all_courses.keys()}
+        dict_dep = ucla_data[dep]
+        for k,c in all_courses:
+            for term in terms:
+                if term[2] == '1':
+                    data = get_course_data(term,dept,k,summer=True)
+                else:
+                    data = get_course_data(term,dept,k)
+                dict_dep[c][term] = data
     import pprint
     pp = pprint.PrettyPrinter(indent=2)
-    pp.pprint(x) 
+    pp.pprint(ucla_data)
+
+
+            
+
+
+
+
 
