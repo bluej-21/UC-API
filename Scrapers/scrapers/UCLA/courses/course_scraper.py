@@ -7,6 +7,7 @@ import requests
 import logging
 import sys
 import time
+import json
 
 logging.basicConfig(filename='ucla_courses.log')
 
@@ -122,7 +123,7 @@ def get_list_of_courses(dept, dept_url):
 
     # data structure will look like: { deptname: course: [semesters offered] }
     dept_data = {} 
-    soup = get_soup(dept_url)
+    soup = get_ugly_soup(dept_url)
     session_pattern = re.compile(
         r'ctl00_BodyContent' \
         'PlaceHolder_crsredir1_pnl(NormalInfo|SessionInfo[a-zA-Z])'
@@ -186,33 +187,26 @@ def get_course_data(term, dept, course_code, summer=False):
 
 if __name__ == '__main__':
     terms, departments = get_term_to_subject()
-    print terms
     ucla_data = {d[0]:None for d in departments}
     for dep,url in departments:
         all_courses = {} 
         term_urls = [url.format(term=term) for term in terms]
 
         for term in term_urls:
-            course, course_key = get_list_of_courses(dep, term)
-            all_couress[course_key] = course
+            courses, course_keys = get_list_of_courses(dep, term)
+            for i in range(len(courses)):
+                all_courses[course_keys[i]] = courses[i]
+                print all_courses
 
         ucla_data[dep] = {c:{} for c in all_courses.keys()}
         dict_dep = ucla_data[dep]
-        for k,c in all_courses:
+        for k,c in all_courses.iteritems():
             for term in terms:
                 if term[2] == '1':
-                    data = get_course_data(term,dept,k,summer=True)
+                    data = get_course_data(term,dep,k,summer=True)
                 else:
-                    data = get_course_data(term,dept,k)
-                dict_dep[c][term] = data
-    import pprint
-    pp = pprint.PrettyPrinter(indent=2)
-    pp.pprint(ucla_data)
-
-
-            
-
-
-
-
-
+                    data = get_course_data(term,dep,k)
+                dict_dep[c] = data
+    json.dumps(ucla_data)
+    with open('ucla_courses.json', 'w') as fp:
+        json.dumps(ucla_data, fp)
