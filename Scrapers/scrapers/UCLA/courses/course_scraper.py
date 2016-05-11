@@ -189,6 +189,7 @@ if __name__ == '__main__':
     terms, departments = get_term_to_subject()
     ucla_data = {d[0]:None for d in departments}
     for dep,url in departments:
+        print "scraping the following department: %s" % dep
         all_courses = {} 
         term_urls = [url.format(term=term) for term in terms]
 
@@ -196,7 +197,6 @@ if __name__ == '__main__':
             courses, course_keys = get_list_of_courses(dep, term)
             for i in range(len(courses)):
                 all_courses[course_keys[i]] = courses[i]
-                print all_courses
 
         ucla_data[dep] = {c:{} for c in all_courses.keys()}
         dict_dep = ucla_data[dep]
