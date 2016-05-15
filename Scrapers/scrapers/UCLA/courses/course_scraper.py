@@ -186,7 +186,12 @@ def get_course_data(term, dept, course_code, summer=False):
 
 
 if __name__ == '__main__':
-    terms, departments = get_term_to_subject()
+    # terms, departments = get_term_to_subject()
+    # ucla_data = {d[0]:None for d in departments}
+    terms = ['16S', '161', '16W', '15F']
+    departments = [('COM+SCI', 
+                    'http://www.registrar.ucla.edu/schedule/crsredir.aspx?termsel={term}&subareasel=COM+SCI'
+                    )]
     ucla_data = {d[0]:None for d in departments}
     for dep,url in departments:
         print "scraping the following department: %s" % dep
@@ -194,19 +199,20 @@ if __name__ == '__main__':
         term_urls = [url.format(term=term) for term in terms]
 
         for term in term_urls:
-            courses, course_keys = get_list_of_courses(dep, term)
+            # courses, course_keys = get_list_of_courses(dep, term)
+            course_keys = ['0031++++']
+            courses = [u'COM SCI 31 - Introduction to Computer Science I'] 
             for i in range(len(courses)):
                 all_courses[course_keys[i]] = courses[i]
-
-        ucla_data[dep] = {c:{} for c in all_courses.keys()}
+                ucla_data[dep] = {c:[{term:None} for term in terms] for c in all_courses.keys()}
         dict_dep = ucla_data[dep]
         for k,c in all_courses.iteritems():
-            for term in terms:
+            for i in range(len(terms)):
+                term = terms[i]
                 if term[2] == '1':
                     data = get_course_data(term,dep,k,summer=True)
                 else:
                     data = get_course_data(term,dep,k)
-                dict_dep[c] = data
-    json.dumps(ucla_data)
+                dict_dep[k][i] = data[term]
     with open('ucla_courses.json', 'w') as fp:
-        json.dumps(ucla_data, fp)
+        json.dump(ucla_data, fp)
