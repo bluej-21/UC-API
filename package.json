@@ -1,0 +1,26 @@
+{
+  "name": "uc-api",
+  "version": "1.0.0",
+  "description": "UC course scraper/storage",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./Server/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluej-21/UC-API.git"
+  },
+  "engines": {
+    "node": "6.1.0",
+    "npm": "3.7.3"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bluej-21/UC-API/issues"
+  },
+  "homepage": "https://github.com/bluej-21/UC-API#readme",
+  "dependencies": {
+    "express": "^4.13.4"
+  }
+}

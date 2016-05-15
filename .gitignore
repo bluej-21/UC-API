@@ -7,3 +7,4 @@ distro
 .Python
 .env
 .idea
+node_modules
