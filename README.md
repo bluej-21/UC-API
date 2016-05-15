@@ -1,12 +1,24 @@
 # UC-API
 
-###Things to read/resources
-http://nvie.com/posts/a-successful-git-branching-model/
+##Things to read/resources
 
-Guide:
+#### Git
+* [A successful git branching model](http://nvie.com/posts/a-successful-git-branching-model/)
 
-//install all dependencies
+#### API/DB
+* [Best practices for a RESTful API](http://www.vinaysahni.com/best-practices-for-a-pragmatic-restful-api)
+
+#### Node
+* something
+
+##Guide:
+
+To install all dependencies
+```
 npm install
+```
 
-//to start the local server, it will host at localhost:8000.
+To start the local server, it will host at localhost:8000.
+```
 npm start
+```
