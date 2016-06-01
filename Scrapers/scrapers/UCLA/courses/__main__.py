@@ -65,7 +65,42 @@ def get_course_description(url):
             })
 
     return course_descriptions
+
+def get_dept_course_timings(url):
+    soup = get_soup(url)
+    courses = soup.find_all('div', {'class': 'class-title'})
+    dept_data = []
+    for course in courses:
+        name = course.find('h3').find('a').text.split(' - ')
+        course_code = name[0]
+        course_title = ' '.join(name[1:])
+
+        section_column = course.find_all('div', {'class': 'sectionColumn'})
+        status_column = course.find_all('div', {'class':'statusColumn'})
+        waitlist_column = course.find_all('div', {'class':'waitlistColumn'})
+        info_column = course.find_all('div', {'class':'infoColumn'})
+        day_column = course.find_all('div', {'class': 'dayColumn'})
+        time_column = course.find_all('div', {'class': 'timeColumn'})
+        unit_column = course.find_all('div', {'class': 'unitColumn'})
+        instructor_column = course.find_all('div', {'class': 'instructorColumn'})
+
+        section = 
+        status = [x.find('p').text for x in status_box]
+        waitlist = []
+        info = 
+        days = 
+        times =
+        units = 
+        instructors = 
+
+        for sc, st, wt, days, tms, unts, inst in itertools.izip(
+                section, status, waitlist, info, days, times, units, instructors):
+            data = {'section': sc, 'status': st, 'waitlist': wt, 'days': days, 'time': tms, 'units': unts, 'instructor(s)': inst}
+            dept_data.append(data)
+    return dept_data
+
+    
     
 complete_urls = map(lambda x: (x[0], HOMEURL + x[1]), get_dept_description_urls())
 descriptions = map(lambda x: (x[0], get_course_description(x[1])), complete_urls)
-print descriptions
+print get_dept_course_timings('https://sa.ucla.edu/ro/Public/SOC/Results?t=16F&sBy=subject&sName=Computer+Science+%28COM+SCI%29&subj=COM+SCI&crsCatlg=Enter+a+Catalog+Number+or+Class+Title+%28Optional%29&catlg=&cls_no=&btnIsInIndex=btn_inIndex')
