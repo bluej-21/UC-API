@@ -14,6 +14,31 @@ import scrapers
 logging.basicConfig(filename='ucla_courses.log')
 HOMEURL = 'http://registrar.ucla.edu'
 
+
+def get_popover_items(popover):
+    info = {}
+    enrlmnt_restriction = popover.find('div', {'class':'enrollment_restrictions_content'})
+    grade_type = popover.find('div', {'class': 'grade_type'})
+    final_exam = popover.find('div', {'class': 'final_exam'})
+    course_notes = popover.find('div', {'class': 'course_notes'})
+
+    if enrlmt_restriction:
+        info['enrollmentRestriction'] = enrlmnt_restriction.find('p').text
+    if grade_type:
+        grade = grade_type.find_all('p')
+        more_info = {}
+        for i in grade:
+            text = i.text.split(':')
+            key = text[0].strip()
+            value = ' '.join([x.strip() for x in text[1:]])
+            more_info[key] = value
+        info['gradeType'] = more_info
+    if final_exam:
+        pass
+    if course_notes:
+        pass
+    
+
 def get_soup(url):
     """Get a BeautifulSoup object that represents the html in the url
 
@@ -86,8 +111,8 @@ def get_dept_course_timings(url):
 
         section = 
         status = [x.find('p').text for x in status_box]
-        waitlist = []
-        info = 
+        waitlist = [x.find('p').text for x in waitlist_box]
+        info = [get_popover_items(x.find('div', {'class':'popver-content'})) for x in info_box] 
         days = 
         times =
         units = 
