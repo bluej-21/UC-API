@@ -8,3 +8,4 @@ distro
 .idea
 .env
 *.log
+node_modules
