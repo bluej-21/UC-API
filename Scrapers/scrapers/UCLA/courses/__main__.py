@@ -1,14 +1,12 @@
-from bs4 import BeautifulSoup
-from bs4 import NavigableString
+from bs4 import BeautifulSoup, NavigableString
 from tidylib import tidy_document
 from selenium import webdriver
-from lxml import html
-from lxml.html import fromstring
-import re
+# from lxml import html
+# import re
 import requests
 import logging
-import sys
-import time
+# import sys
+# import time
 import json
 import scrapers
 import itertools
@@ -40,11 +38,22 @@ def get_selenium_soup(driver):
     return BeautifulSoup(driver.get_page_source, 'html.parser')
 
 
-def get_popover_items(popover):
+def get_popover_items(driver, course_id, which_course, which_column):
+    
     # //div[@id='COMSCI0031-children']/div[@class='row-fluid data_row primary-row class-info class-checked']
     # /div[@class='infoColumn hide-small click_info']
+
+    # setup
+    id_children = course_id + '-children'
+    xpath = "//div[@id='%s']/div[contains(@class, 'data_row')]/div[contains(@class, 'infoColumn')][%d]/a" % (id_children, int(which_column))
+    driver.find_element_by_xpath(xpath).click()
+    soup = get_selenium_soup(driver)
+    course = soup.find_all('div', {'class': 'class-title'})[which_course]
+    info_column = course.find_all('div', {'class':'infoColumn'})
+    popover = info_column.find('div', {'class': ''}) 
+
+    # collect data
     info = {}
-    print popover
     enrlmnt_restriction = popover.find('div', {'class':'enrollment_restrictions_content'})
     grade_type = popover.find('div', {'class': 'grade_type'})
     final_exam = popover.find('div', {'class': 'final_exam'})
@@ -68,7 +77,12 @@ def get_popover_items(popover):
         day = data.find('div', {'class': 'span2'}).text
         time = data.find('div', {'class': 'span3'}).text
         locations = data.find('div', {'class': 'span4'}).text
-        final_exam_data = {'date': date, 'day': day, 'time': time, 'location(s)': locations}
+        final_exam_data = {
+                'date': date,
+                'day': day,
+                'time': time,
+                'location(s)': locations
+                }
         info['finalExam'] = final_exam_data
     if course_notes:
         content = course_notes.find('div', {'class': 'class_notes_content'})
@@ -105,12 +119,11 @@ def get_course_description(url):
             units = d[0].text.split(':')[1].strip()
             d = d[1].text
             course_descriptions.append({
-                course_code: 
-                    [('name', name), 
-                     ('description', d),
-                     ('units', units)
-                     ]
-            })
+                course_code: [
+                    ('name', name),
+                    ('description', d),
+                    ('units', units)]
+                })
 
     return course_descriptions
 
@@ -124,12 +137,12 @@ def get_dept_course_data(url):
     
     # get soup of page w/ everything expanded
     soup = BeautifulSoup(driver.page_source, 'html.parser')
-    driver.close()
 
     courses = soup.find_all('div', {'class': 'class-title'})
     dept_data = []
-    for course in courses:
-        print course
+    for which_course, course in enumerate(courses):
+
+        course_id = course.get('id')
         name = course.find('h3').find('a').text.split(' - ')
         course_code = name[0]
         course_title = ' '.join(name[1:])
@@ -148,7 +161,7 @@ def get_dept_course_data(url):
         status = [x.find('p').text for x in status_column]
         waitlist = [x.find('p').text for x in waitlist_column]
         # x.find('div', {'class':'popver-content'})
-        info = [get_popover_items(course_id, i+1) for x,i in zip(info_column, range(len(info_column))] 
+        info = [get_popover_items(driver, course_id, which_course, i) for i,x in enumerate(info_column)] 
         days = [x for x in range(i)] 
         times = [x for x in range(i)] 
         units = [x for x in range(i)]
@@ -156,8 +169,18 @@ def get_dept_course_data(url):
 
         for sc, st, wt, days, tms, unts, inst in itertools.izip(
                 section, status, waitlist, info, days, times, units, instructors):
-            data = {'section': sc, 'status': st, 'waitlist': wt, 'days': days, 'time': tms, 'units': unts, 'instructor(s)': inst}
+            data = {
+                'section': sc,
+                'status': st,
+                'waitlist': wt,
+                'days': days,
+                'time': tms,
+                'units': unts,
+                'instructor(s)': inst
+            }
             dept_data.append(data)
+
+    driver.close()
     return dept_data
     
     
