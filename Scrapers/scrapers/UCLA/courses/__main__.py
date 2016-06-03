@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 from bs4 import NavigableString
 from tidylib import tidy_document
+from selenium import webdriver
 from lxml import html
 from lxml.html import fromstring
 import re
@@ -16,9 +17,34 @@ logging.basicConfig(filename='ucla_courses.log')
 HOMEURL = 'http://registrar.ucla.edu'
 
 
-def get_popover_items(popover):
-    info = {}
+def get_soup(url):
+    """Get a BeautifulSoup object that represents the html in the url
 
+    params:
+        url -- a string that is a url
+    """
+
+    try:
+        response = requests.get(url)
+    except requests.exceptions.RequestException as e:
+        logging.log(40, e)
+        sys.exit(1)
+
+    html = response.content
+    # tidy, errors = tidy_document(html)
+    soup = BeautifulSoup(html, 'html.parser')
+    return soup
+
+
+def get_selenium_soup(driver):
+    return BeautifulSoup(driver.get_page_source, 'html.parser')
+
+
+def get_popover_items(popover):
+    # //div[@id='COMSCI0031-children']/div[@class='row-fluid data_row primary-row class-info class-checked']
+    # /div[@class='infoColumn hide-small click_info']
+    info = {}
+    print popover
     enrlmnt_restriction = popover.find('div', {'class':'enrollment_restrictions_content'})
     grade_type = popover.find('div', {'class': 'grade_type'})
     final_exam = popover.find('div', {'class': 'final_exam'})
@@ -51,24 +77,6 @@ def get_popover_items(popover):
 
     return info
     
-
-def get_soup(url):
-    """Get a BeautifulSoup object that represents the html in the url
-
-    params:
-        url -- a string that is a url
-    """
-
-    try:
-        response = requests.get(url)
-    except requests.exceptions.RequestException as e:
-        logging.log(40, e)
-        sys.exit(1)
-
-    html = response.content
-    # tidy, errors = tidy_document(html)
-    soup = BeautifulSoup(html, 'html.parser')
-    return soup
 
 
 def get_dept_description_urls(url=HOMEURL + '/Academics/Course-Descriptions'):
@@ -107,8 +115,17 @@ def get_course_description(url):
     return course_descriptions
 
 
-def get_dept_course_timings(url):
-    soup = get_soup(url)
+def get_dept_course_data(url):
+
+    # expand all
+    driver = webdriver.Firefox()
+    driver.get(url)
+    driver.find_element_by_id('expandAll').click()
+    
+    # get soup of page w/ everything expanded
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    driver.close()
+
     courses = soup.find_all('div', {'class': 'class-title'})
     dept_data = []
     for course in courses:
@@ -125,12 +142,13 @@ def get_dept_course_timings(url):
         time_column = course.find_all('div', {'class': 'timeColumn'})
         unit_column = course.find_all('div', {'class': 'unitColumn'})
         instructor_column = course.find_all('div', {'class': 'instructorColumn'})
-        print section_column        
         i = len(section_column)
+
         section = [x for x in range(i)] 
         status = [x.find('p').text for x in status_column]
         waitlist = [x.find('p').text for x in waitlist_column]
-        info = [get_popover_items(x.find('div', {'class':'popver-content'})) for x in info_column] 
+        # x.find('div', {'class':'popver-content'})
+        info = [get_popover_items(course_id, i+1) for x,i in zip(info_column, range(len(info_column))] 
         days = [x for x in range(i)] 
         times = [x for x in range(i)] 
         units = [x for x in range(i)]
@@ -145,4 +163,4 @@ def get_dept_course_timings(url):
     
 # complete_urls = map(lambda x: (x[0], HOMEURL + x[1]), get_dept_description_urls())
 # descriptions = map(lambda x: (x[0], get_course_description(x[1])), complete_urls)
-print get_dept_course_timings('https://sa.ucla.edu/ro/Public/SOC/Results?t=16F&sBy=subject&sName=Computer+Science+%28COM+SCI%29&subj=COM+SCI&crsCatlg=Enter+a+Catalog+Number+or+Class+Title+%28Optional%29&catlg=&cls_no=&btnIsInIndex=btn_inIndex')
+print get_dept_course_data('https://sa.ucla.edu/ro/Public/SOC/Results?t=16F&sBy=subject&sName=Computer+Science+%28COM+SCI%29&subj=COM+SCI&crsCatlg=Enter+a+Catalog+Number+or+Class+Title+%28Optional%29&catlg=&cls_no=&btnIsInIndex=btn_inIndex')
