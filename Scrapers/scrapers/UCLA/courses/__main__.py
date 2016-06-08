@@ -1,6 +1,9 @@
 from bs4 import BeautifulSoup, NavigableString
 from tidylib import tidy_document
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 # from lxml import html
 # import re
 import requests
@@ -35,7 +38,8 @@ def get_soup(url):
 
 
 def get_selenium_soup(driver):
-    return BeautifulSoup(driver.get_page_source, 'html.parser')
+    source = driver.page_source
+    return BeautifulSoup(source, 'html.parser')
 
 
 def get_popover_items(driver, course_id, which_course, which_column):
@@ -45,13 +49,18 @@ def get_popover_items(driver, course_id, which_course, which_column):
 
     # setup
     id_children = course_id + '-children'
-    xpath = "//div[@id='%s']/div[contains(@class, 'data_row')]/div[contains(@class, 'infoColumn')][%d]/a" % (id_children, int(which_column))
+    xpath = "//div[@id='%s']/div[contains(@class, 'class-info')]/div[contains(@class, 'infoColumn')]/a[@href]" % id_children
     driver.find_element_by_xpath(xpath).click()
-    soup = get_selenium_soup(driver)
-    course = soup.find_all('div', {'class': 'class-title'})[which_course]
-    info_column = course.find_all('div', {'class':'infoColumn'})
-    popover = info_column.find('div', {'class': ''}) 
+    try:
+        element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "popover"))
+        )
+    finally:
+        soup = get_selenium_soup(driver)
 
+    course = soup.find_all('div', {'class': 'class-title'})[which_course]
+    info_column = course.find('div', {'class':'infoColumn'})
+    popover = soup.find('div', {'class': 'popover'}) 
     # collect data
     info = {}
     enrlmnt_restriction = popover.find('div', {'class':'enrollment_restrictions_content'})
@@ -59,7 +68,7 @@ def get_popover_items(driver, course_id, which_course, which_column):
     final_exam = popover.find('div', {'class': 'final_exam'})
     course_notes = popover.find('div', {'class': 'course_notes'})
 
-    if enrlmt_restriction:
+    if enrlmnt_restriction:
         info['enrollmentRestriction'] = enrlmnt_restriction.find('p').text
     if grade_type:
         grade = grade_type.find_all('p')
@@ -156,18 +165,19 @@ def get_dept_course_data(url):
         unit_column = course.find_all('div', {'class': 'unitColumn'})
         instructor_column = course.find_all('div', {'class': 'instructorColumn'})
         i = len(section_column)
-
+        
         section = [x for x in range(i)] 
         status = [x.find('p').text for x in status_column]
         waitlist = [x.find('p').text for x in waitlist_column]
         # x.find('div', {'class':'popver-content'})
-        info = [get_popover_items(driver, course_id, which_course, i) for i,x in enumerate(info_column)] 
+        info = [get_popover_items(driver, course_id, which_course, y) for y,x in enumerate(info_column)] 
         days = [x for x in range(i)] 
         times = [x for x in range(i)] 
         units = [x for x in range(i)]
         instructors = [x for x in range(i)] 
-
-        for sc, st, wt, days, tms, unts, inst in itertools.izip(
+        print info
+ 
+        for sc, st, wt, inf, day, tms, unts, inst in itertools.izip(
                 section, status, waitlist, info, days, times, units, instructors):
             data = {
                 'section': sc,
@@ -178,6 +188,7 @@ def get_dept_course_data(url):
                 'units': unts,
                 'instructor(s)': inst
             }
+            print data
             dept_data.append(data)
 
     driver.close()
